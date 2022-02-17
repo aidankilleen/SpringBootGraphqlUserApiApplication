@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<table id="tblUsers">
+    <thead>
+    <tr>
+        <td>Id</td>
+        <td>Name</td>
+        <td>Email</td>
+        <td>Active</td>
+        <td></td>
+    </tr>
+    </thead>
+    <tbody>
+
+    </tbody>
+</table>
+
+<hr>
+
+<input placeholder="Enter Name" id="txtName"/><br>
+<input placeholder="user@address.com" id="txtEmail"><br>
+<label>Active</label><input type="checkbox" id="chkActive"><br>
+
+<button id="btnAdd">Add</button>
+<button id="btnSave" onclick="onSave()">Save</button>
+
+<script>
+    let url = "/graphql";
+
+    let id = 86;
+    let queries = {
+        "users": `query{
+                    users{
+                        id
+                        name
+                        email
+                        active
+                    }
+                  }`,
+        "user": `query($id: Int!){
+                    user(id: $id) {
+                        id
+                        name
+                        email
+                        active
+                    }
+                  }`,
+        "add": `mutation($userToAdd: AddUserDto!) {
+                  addUser(userToAdd: $userToAdd) {
+                    id
+                    name
+                    email
+                    active
+                  }
+                }`,
+        "delete": `mutation($id: Int!) {
+                  delete(id: $id)
+                }`,
+        "update": `mutation($userToUpdate: UserDto!) {
+                  update(userToUpdate: $userToUpdate){
+                    id
+                    name
+                    email
+                    active
+                  }
+                }`
+
+    };
+    let tbody = document.querySelector("#tblUsers tbody");
+
+    function executeGraphQl(query, variables) {
+        let body = {
+            query,
+            variables
+        };
+
+        let options = {
+            method: "POST",
+            header: {
+                contentType: "applications/json"
+            },
+            body: JSON.stringify(body)
+        };
+
+        return fetch(url, options)
+            .then(data=>data.json());
+    }
+    function addUserToTable(user) {
+        let tr = tbody.insertRow();
+
+        tr.id = `tr_${user.id}`;
+
+        tr.innerHTML = `
+                <td>${user.id}</td>
+                <td>${user.name}</td>
+                <td>${user.email}</td>
+                <td>${user.active}</td>
+                <td>
+                    <button id="btnDelete_${user.id}" onclick="onDelete(this)">Delete</button>
+                    <button id="btnEdit_${user.id}" onclick="onEdit(this)">Edit</button>
+                </td>
+            `;
+
+    }
+
+    function getIdFromButton(btn) {
+        let pieces = btn.id.split("_");
+        let id = parseInt(pieces[1]);
+        return id;
+    }
+
+    let selectedId;
+
+    function onSave() {
+
+        // read the updated values
+
+        let name = document.getElementById("txtName").value;
+        let email = document.getElementById("txtEmail").value;
+        let active = document.getElementById("chkActive").checked;
+
+        let updatedUser = {
+            id: selectedId,
+            name,
+            email,
+            active
+        }
+
+        let variables = {
+            "userToUpdate": updatedUser
+        }
+
+        executeGraphQl(queries["update"], variables)
+        .then(()=>{
+            document.querySelector(`#tr_${selectedId} td:nth-child(2)`).innerHTML = updatedUser.name;
+            document.querySelector(`#tr_${selectedId} td:nth-child(3)`).innerHTML = updatedUser.email;
+            document.querySelector(`#tr_${selectedId} td:nth-child(4)`).innerHTML = updatedUser.active;
+        })
+
+
+        // call the api
+
+    }
+
+    function onEdit(btn) {
+        let id = getIdFromButton(btn);
+
+        let name = document.querySelector(`#tr_${id} td:nth-child(2)`).innerHTML;
+        let email = document.querySelector(`#tr_${id} td:nth-child(3)`).innerHTML;
+        let active = document.getElementById("txtName").value = name;
+        document.getElementById("txtName").value = name;
+        document.getElementById("txtEmail").value = email;
+        document.getElementById("chkActive").checked = active;
+
+        selectedId = id;
+
+
+    }
+    function onDelete(btn) {
+
+        let id = getIdFromButton(btn);
+
+        if (confirm("delete:" + id)) {
+            let variables = {
+                id
+            };
+            executeGraphQl(queries["delete"], variables)
+            .then(()=> {
+                let tr = document.getElementById(`tr_${id}`);
+                tr.remove();
+            });
+        }
+    }
+    // initial populate table
+    executeGraphQl(queries['users'], {})
+    .then(json => {
+        json.data.users.forEach(user => {
+            addUserToTable(user);
+        });
+    })
+
+    document.getElementById("btnAdd").addEventListener("click", function() {
+
+        let name = document.getElementById("txtName").value;
+        let email = document.getElementById("txtEmail").value;
+        let active = document.getElementById("chkActive").checked;
+        let newUser = {
+            name,
+            email,
+            active
+        };
+
+        let queryParam = {
+            userToAdd: newUser
+        };
+
+        executeGraphQl(queries["add"], queryParam)
+            .then(json=> {
+                addUserToTable(json.data.addUser);
+
+            });
+    });
+
+
+
+
+</script>
+
+</body>
+</html>

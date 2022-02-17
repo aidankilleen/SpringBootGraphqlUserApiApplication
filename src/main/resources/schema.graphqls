@@ -1,0 +1,37 @@
+schema {
+    query: Queries
+    mutation: Mutations
+}
+
+type Queries {
+    users: [User]!
+    activeUsers: [User]!
+    user(id: Int!): User
+}
+
+type Mutations {
+    addUser(userToAdd: AddUserDto): User
+    delete(id: Int!): Int
+    update(userToUpdate: UserDto): User
+}
+
+type User {
+    id: Int!
+    name: String
+    email: String
+    active: Boolean
+}
+
+input AddUserDto {
+    name: String!
+    email: String
+    active: Boolean
+}
+
+input UserDto {
+    id: Int!
+    name: String
+    email: String
+    active: Boolean
+
+}
